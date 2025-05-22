@@ -3,9 +3,11 @@ async function loadPosts() {
   const postsContainer = document.getElementById('posts-container');
   
   try {
-    const response = await fetch(
-      'https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/contents/posts?ref=main'
-    );
+    const response = await fetch('https://api.github.com/https://github.com/AkashKumarGupta1998/22maywebsite/edit/main/scripts/posts.js', {
+  headers: {
+    Authorization: `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`
+  }
+})
     
     if (!response.ok) throw new Error('Failed to load posts');
     
