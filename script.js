@@ -130,3 +130,152 @@ document.getElementById('download-resume').addEventListener('click', function(e)
     // Example of how it would work with a real file:
     // window.open('path/to/your/resume.pdf', '_blank');
 });
+// POST SYSTEM v2 - With shareable links and admin control
+const ADMIN_PASSWORD = "yourSecurePassword123"; // CHANGE THIS
+const postsContainer = document.getElementById('posts-container');
+const postForm = document.getElementById('post-form');
+
+// Generate URL-friendly slug from title
+function createSlug(title) {
+    return title.toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .replace(/\s+/g, '-')
+        .substring(0, 50);
+}
+
+// Load and display posts
+function loadPosts() {
+    const posts = JSON.parse(localStorage.getItem('portfolio-posts')) || [];
+    postsContainer.innerHTML = '';
+    
+    // Check if viewing a single post from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const postSlug = urlParams.get('post');
+    
+    if (postSlug) {
+        const singlePost = posts.find(p => p.slug === postSlug);
+        if (singlePost) {
+            displaySinglePost(singlePost);
+            return;
+        }
+    }
+    
+    // Display all posts
+    posts.forEach(post => {
+        const postEl = document.createElement('article');
+        postEl.className = 'post-card';
+        postEl.innerHTML = `
+            <div class="post-header">
+                <h3><a href="?post=${post.slug}" class="post-link">${post.title}</a></h3>
+                <div class="post-meta">
+                    <span class="post-date">${new Date(post.date).toLocaleDateString()}</span>
+                    <div class="post-share">
+                        <a href="#" class="share-btn" data-slug="${post.slug}">
+                            <i class="fas fa-share-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="post-content">
+                <p>${post.content.substring(0, 200)}${post.content.length > 200 ? '...' : ''}</p>
+                ${post.content.length > 200 ? `<a href="?post=${post.slug}" class="read-more">Read more</a>` : ''}
+            </div>
+        `;
+        postsContainer.appendChild(postEl);
+    });
+    
+    initShareButtons();
+}
+
+// Display single post view
+function displaySinglePost(post) {
+    postsContainer.innerHTML = `
+        <article class="single-post">
+            <div class="post-header">
+                <h2>${post.title}</h2>
+                <div class="post-meta">
+                    <span class="post-date">${new Date(post.date).toLocaleDateString()}</span>
+                    <div class="post-share">
+                        <a href="#" class="share-btn" data-slug="${post.slug}">
+                            <i class="fas fa-share-alt"></i> Share
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="post-content">
+                <p>${post.content}</p>
+            </div>
+            <a href="#" class="btn back-to-posts"><i class="fas fa-arrow-left"></i> All Posts</a>
+        </article>
+    `;
+    
+    document.querySelector('.back-to-posts').addEventListener('click', (e) => {
+        e.preventDefault();
+        window.history.pushState({}, '', window.location.pathname);
+        loadPosts();
+    });
+    
+    initShareButtons();
+}
+
+// Initialize share buttons
+function initShareButtons() {
+    document.querySelectorAll('.share-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const slug = this.getAttribute('data-slug');
+            const postUrl = `${window.location.origin}${window.location.pathname}?post=${slug}`;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(postUrl).then(() => {
+                alert('Post link copied to clipboard!\n\nShare this URL: ' + postUrl);
+            }).catch(() => {
+                prompt('Copy this post URL to share:', postUrl);
+            });
+        });
+    });
+}
+
+// Handle new post submission
+postForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const password = prompt("Enter admin password to post:");
+    if (password !== ADMIN_PASSWORD) {
+        alert("Incorrect password. Only authorized users can post.");
+        return;
+    }
+
+    const title = document.getElementById('post-title').value;
+    const content = document.getElementById('post-content').value;
+    
+    if (!title || !content) {
+        alert("Please fill in both title and content");
+        return;
+    }
+
+    const newPost = {
+        title,
+        content,
+        slug: createSlug(title),
+        date: new Date().toISOString()
+    };
+
+    // Save to localStorage
+    const existingPosts = JSON.parse(localStorage.getItem('portfolio-posts')) || [];
+    existingPosts.unshift(newPost);
+    localStorage.setItem('portfolio-posts', JSON.stringify(existingPosts));
+    
+    // Reset form and reload
+    postForm.reset();
+    loadPosts();
+    alert("Post published successfully!");
+});
+
+// Handle browser back/forward
+window.addEventListener('popstate', () => {
+    loadPosts();
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', loadPosts);
